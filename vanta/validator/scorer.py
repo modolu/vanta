@@ -109,6 +109,10 @@ def score_forecast(
 
     ``calibration_component`` comes from the miner's reputation *before* this forecast,
     keeping the score causal — a forecast never contributes to its own calibration term.
+
+    Raises:
+        VoidResolutionError: if the market closed exactly flat (§14). Callers must skip
+            void tasks; they contribute to neither scores nor calibration.
     """
     if forecast.task_id != resolution.task_id:
         raise VantaValidationError(
@@ -116,7 +120,7 @@ def score_forecast(
             f"resolution task_id {resolution.task_id!r}"
         )
 
-    outcome = resolution.outcome
+    outcome = resolution.require_outcome()
     brier = brier_score(forecast.probability_up, outcome)
     quality = 1.0 - brier
     returns = return_score(forecast.expected_return, resolution.realized_return, return_scale)

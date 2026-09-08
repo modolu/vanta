@@ -42,6 +42,14 @@ Changing any of these requires an explicit instruction — raise it, do not just
   weighting and consensus are demonstrated offline against historical replay first.
 - **Mechanism correctness takes priority over API/UI polish** (§51 — polish is explicitly not the
   judging priority).
+- **Mechanism decisions locked after Phase 1** — change only on explicit instruction:
+  - An exactly flat realized return (`0.0`) **voids** the directional outcome (§14). Void tasks are
+    excluded from scoring, calibration and reputation; they never count as DOWN.
+  - Rolling calibration is **10-bin ECE**, `quality = 1 - ECE`, for the MVP (§18).
+  - Weight exponent **`gamma = 1.2`**, configurable (§21).
+  - **`provisional_scale = 1.0`** — no probation penalty until simulation evidence justifies one (§20).
+  - Return-score **`scale` is derived from observed ETH volatility**, never hard-coded arbitrarily (§17).
+  - **Network confidence (§31) stays deferred** — its ingredients are named but not its equation.
 - Repo stays private until submission.
 
 ## Build order

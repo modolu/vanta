@@ -18,6 +18,7 @@ from itertools import pairwise
 from vanta.log import get_logger
 from vanta.market.errors import (
     InsufficientMarketDataError,
+    LookaheadError,
     StaleMarketDataError,
 )
 from vanta.market.normalization import align_down
@@ -55,6 +56,23 @@ class MarketWindow:
 
     as_of: int
     candles: tuple[Candle, ...]
+
+    def __post_init__(self) -> None:
+        """Enforce the causal invariant on every construction path, not just ``build``.
+
+        Constructing a window directly with a candle from after ``as_of`` is rejected, so
+        the boundary cannot be bypassed by building the dataclass by hand.
+        """
+        previous = -1
+        for candle in self.candles:
+            if candle.close_time > self.as_of:
+                raise LookaheadError(
+                    f"candle closing at {candle.close_time} is after the window instant "
+                    f"{self.as_of}; a causal view cannot hold future data"
+                )
+            if candle.open_time <= previous:
+                raise LookaheadError("candles must be strictly ascending by open_time")
+            previous = candle.open_time
 
     @classmethod
     def build(cls, candles: Iterable[Candle], as_of: int) -> MarketWindow:

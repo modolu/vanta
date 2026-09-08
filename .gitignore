@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Vanta runtime state
+data/
+*.db
+*.sqlite3
+logs/
+*.log
+
+# Secrets / keys — never commit (ARCHITECTURE.md §45)
+.env
+.env.*
+!.env.example
+wallets/
+*.pem
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

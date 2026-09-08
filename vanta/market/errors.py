@@ -11,6 +11,7 @@ from __future__ import annotations
 __all__ = [
     "AllProvidersFailedError",
     "InsufficientMarketDataError",
+    "LookaheadError",
     "MalformedMarketDataError",
     "MarketDataError",
     "ProviderError",
@@ -36,6 +37,14 @@ class StaleMarketDataError(MarketDataError):
 
 class InsufficientMarketDataError(MarketDataError):
     """Not enough candles to answer the request."""
+
+
+class LookaheadError(MarketDataError):
+    """A causal view was asked to hold data from after its own instant (§29).
+
+    This is always a bug, never a market condition: it means a forecast could have been
+    computed from the outcome it was meant to predict.
+    """
 
 
 class AllProvidersFailedError(MarketDataError):

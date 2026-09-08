@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from vanta.protocol.forecast import Forecast, ForecastTask, Resolution
+from vanta.protocol.forecast import Forecast, ForecastTask, Resolution, VoidResolutionError
 from vanta.validation import VantaValidationError
 from vanta.validator.scorer import (
     CALIBRATION_WEIGHT,
@@ -212,6 +212,17 @@ class TestScoreForecast:
             task_id="some-other-task", miner_uid=6, probability_up=0.5, expected_return=0.0
         )
         with pytest.raises(VantaValidationError, match="does not match"):
+            score_forecast(forecast, resolution, return_scale=SCALE, calibration_component=0.5)
+
+    def test_void_resolution_cannot_be_scored(self) -> None:
+        # LOCKED (§14): a flat market is excluded from scoring entirely rather than
+        # silently re-weighting the 60/30/10 split onto the surviving components.
+        task = make_task()
+        resolution = Resolution.from_task(task, resolution_price=task.reference_price)
+        forecast = Forecast(
+            task_id=task.task_id, miner_uid=9, probability_up=0.5, expected_return=0.0
+        )
+        with pytest.raises(VoidResolutionError, match="no directional outcome"):
             score_forecast(forecast, resolution, return_scale=SCALE, calibration_component=0.5)
 
     def test_carries_identity_through_to_the_score_record(self) -> None:

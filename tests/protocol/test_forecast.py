@@ -4,7 +4,13 @@ import math
 
 import pytest
 
-from vanta.protocol.forecast import Direction, Forecast, ForecastTask, Resolution
+from vanta.protocol.forecast import (
+    Direction,
+    Forecast,
+    ForecastTask,
+    Resolution,
+    VoidResolutionError,
+)
 from vanta.validation import VantaValidationError
 
 T = 1_789_905_600
@@ -112,11 +118,25 @@ class TestResolution:
         assert resolution.direction is Direction.DOWN
         assert resolution.outcome == 0.0
 
-    def test_flat_market_resolves_down_pending_confirmation(self) -> None:
-        # AMBIGUITY (§14): documents the current strictly-positive-is-UP convention.
+    def test_flat_market_voids_the_directional_outcome(self) -> None:
+        # LOCKED (§14): exactly flat voids direction rather than counting as DOWN.
         resolution = Resolution.from_task(make_task(), resolution_price=4500.0)
         assert resolution.realized_return == 0.0
-        assert resolution.direction is Direction.DOWN
+        assert resolution.is_void
+        assert resolution.direction is None
+        assert resolution.outcome is None
+
+    def test_void_resolution_refuses_to_produce_an_outcome(self) -> None:
+        resolution = Resolution.from_task(make_task(), resolution_price=4500.0)
+        with pytest.raises(VoidResolutionError, match="no directional outcome"):
+            resolution.require_outcome()
+
+    def test_non_flat_resolutions_are_not_void(self) -> None:
+        for price in (4500.01, 4499.99):
+            resolution = Resolution.from_task(make_task(), resolution_price=price)
+            assert not resolution.is_void
+            assert resolution.direction is not None
+            assert resolution.require_outcome() == resolution.outcome
 
     def test_from_task_inherits_reference_price_and_resolution_time(self) -> None:
         task = make_task()

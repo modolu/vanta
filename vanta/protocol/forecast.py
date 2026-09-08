@@ -21,7 +21,11 @@ from vanta.validation import (
     require_probability,
 )
 
-__all__ = ["Direction", "Forecast", "ForecastTask", "Resolution"]
+__all__ = ["Direction", "Forecast", "ForecastTask", "Resolution", "VoidResolutionError"]
+
+
+class VoidResolutionError(VantaValidationError):
+    """Raised when a resolution has no directional outcome and cannot be scored."""
 
 
 class Direction(StrEnum):
@@ -170,16 +174,35 @@ class Resolution:
         return (self.resolution_price - self.reference_price) / self.reference_price
 
     @property
-    def direction(self) -> Direction:
-        """Realized direction.
+    def is_void(self) -> bool:
+        """True when the market closed exactly flat and there is no direction to score.
 
-        AMBIGUITY (§14): the architecture defines UP and DOWN but is silent on an exactly
-        flat market. We treat strictly positive returns as UP, so a zero return resolves
-        DOWN. Confirm before this reaches testnet.
+        LOCKED (§14): an exactly zero realized return voids the directional outcome
+        rather than counting as DOWN. A void task carries no directional information, so
+        scoring it either way would inject a coin-flip into every miner's Brier score and
+        calibration history.
         """
+        return self.realized_return == 0.0
+
+    @property
+    def direction(self) -> Direction | None:
+        """Realized direction, or ``None`` when the task is void."""
+        if self.is_void:
+            return None
         return Direction.UP if self.realized_return > 0.0 else Direction.DOWN
 
     @property
-    def outcome(self) -> float:
-        """Binary outcome ``y`` for the Brier score (§16)."""
-        return self.direction.outcome
+    def outcome(self) -> float | None:
+        """Binary outcome ``y`` for the Brier score (§16), or ``None`` when void."""
+        direction = self.direction
+        return None if direction is None else direction.outcome
+
+    def require_outcome(self) -> float:
+        """Return the binary outcome, raising when the task is void."""
+        outcome = self.outcome
+        if outcome is None:
+            raise VoidResolutionError(
+                f"task {self.task_id!r} resolved exactly flat at {self.resolution_price!r}; "
+                "it has no directional outcome and must be excluded from scoring"
+            )
+        return outcome

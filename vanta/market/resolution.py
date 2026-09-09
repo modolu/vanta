@@ -33,6 +33,7 @@ __all__ = [
     "ResolutionEngine",
     "price_at",
     "realized_volatility",
+    "return_scale_from_closes",
 ]
 
 logger = get_logger(__name__)
@@ -145,6 +146,32 @@ def realized_volatility(prices: Sequence[float]) -> float:
     return statistics.stdev(returns)
 
 
+def return_scale_from_closes(
+    closes: Sequence[float], horizon_steps: int, *, min_samples: int
+) -> float:
+    """Volatility of ``horizon_steps``-spaced returns within an already-bounded series.
+
+    Shared by the live resolution engine and the historical replay so both derive the
+    §17 scale identically. ``closes`` must already be causal; this function does not
+    bound anything itself.
+    """
+    if horizon_steps < 1:
+        raise ValueError(f"horizon_steps must be >= 1, got {horizon_steps}")
+    # Subsample backwards from the most recent close so samples sit exactly one horizon
+    # apart and end at the visible edge.
+    sampled = closes[::-1][::horizon_steps][::-1]
+    if len(sampled) - 1 < min_samples:
+        raise InsufficientMarketDataError(
+            f"need {min_samples} horizon returns to estimate scale, got {max(len(sampled) - 1, 0)}"
+        )
+    scale = realized_volatility(sampled)
+    if scale <= 0.0:
+        raise InsufficientMarketDataError(
+            "observed volatility is zero; cannot normalize return errors"
+        )
+    return scale
+
+
 class ResolutionEngine:
     """Prices tasks against a provider and turns realized moves into ground truth (§14)."""
 
@@ -211,20 +238,6 @@ class ResolutionEngine:
         candles = self._provider.fetch_candles(asset, self._interval, start, as_of)
 
         window = MarketWindow.build(candles, as_of)
-        # Subsample backwards from the most recent close so the samples are exactly one
-        # horizon apart and end at `as_of`.
-        sampled = window.closes()[::-1][::step][::-1]
-        if len(sampled) - 1 < self._min_samples:
-            raise InsufficientMarketDataError(
-                f"need {self._min_samples} horizon returns to estimate scale for {asset}, "
-                f"got {max(len(sampled) - 1, 0)}"
-            )
-
-        scale = realized_volatility(sampled)
-        if scale <= 0.0:
-            raise InsufficientMarketDataError(
-                f"observed {horizon_seconds}s volatility for {asset} is zero at {as_of}; "
-                "cannot normalize return errors"
-            )
+        scale = return_scale_from_closes(window.closes(), step, min_samples=self._min_samples)
         logger.debug("return scale for %s at %s: %.6f", asset, as_of, scale)
         return scale

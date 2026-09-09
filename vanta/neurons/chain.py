@@ -39,6 +39,7 @@ __all__ = [
     "RequestVerifier",
     "SubnetView",
     "WeightSubmitter",
+    "balance_amount",
     "connect",
     "hotkey_address",
     "load_wallet",
@@ -178,7 +179,7 @@ def _describe(result: Any) -> str:
     )
 
 
-def _balance_amount(balance: Any) -> float:
+def balance_amount(balance: Any) -> float:
     """Numeric magnitude of a Balance, whatever unit it is denominated in.
 
     Subnet stakes are alpha and root stakes are TAO; ``Balance.tao`` raises outright on
@@ -220,7 +221,7 @@ class BittensorChain:
                 hotkey=str(neuron.hotkey),
                 axon=neuron.axon,
                 validator_permit=bool(neuron.validator_permit),
-                stake=_balance_amount(neuron.total_stake),
+                stake=balance_amount(neuron.total_stake),
             )
             for neuron in metagraph.neurons
         ]

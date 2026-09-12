@@ -75,7 +75,13 @@ def main() -> int:
                 print(f"could not read coldkeypub: {exc}")
         hotkey_dir = wallet_dir / "hotkeys"
         if hotkey_dir.is_dir():
-            hotkeys = sorted(p.name for p in hotkey_dir.iterdir() if p.is_file())
+            # btcli writes each hotkey as <name> (encrypted) plus <name>pub.txt; only
+            # the former is a hotkey.
+            hotkeys = sorted(
+                p.name
+                for p in hotkey_dir.iterdir()
+                if p.is_file() and not p.name.endswith("pub.txt")
+            )
         print(f"coldkey            {coldkey_ss58 or 'unreadable'}")
         print(f"hotkeys            {hotkeys or 'NONE'}")
     else:
@@ -163,11 +169,22 @@ def main() -> int:
         blockers.append("hotkeys")
 
     if not blockers:
-        print("READY. Deploy with:")
-        print(
-            f"  python scripts/testnet_register.py --netuid {args.netuid} "
-            f"--miners {args.miners} --wallet-name {args.wallet_name}"
-        )
+        if args.netuid is None:
+            print("READY. Create the subnet first, then register onto its netuid:")
+            print(
+                f"  btcli subnets create --network {args.network} "
+                f"-w {args.wallet_name} -H validator"
+            )
+            print(
+                f"  python scripts/testnet_register.py --network {args.network} "
+                f"--netuid <new netuid> --miners {args.miners} --wallet-name {args.wallet_name}"
+            )
+        else:
+            print("READY. Deploy with:")
+            print(
+                f"  python scripts/testnet_register.py --network {args.network} "
+                f"--netuid {args.netuid} --miners {args.miners} --wallet-name {args.wallet_name}"
+            )
         return 0
 
     step = 1

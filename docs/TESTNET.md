@@ -33,7 +33,7 @@ Reproduce with:
 
 ```bash
 make testnet-preflight            # readiness + costs, spends nothing
-make network-state NETWORK=test NETUID=1
+make network-state NETWORK=test NETUID=<netuid>
 ```
 
 ### Cost of the full Vanta topology
@@ -95,44 +95,60 @@ Confirm it arrived:
 make testnet-preflight        # prints READY when the wallet, hotkeys and funds all exist
 ```
 
-### 3. Register and publish endpoints
+### 3. Create the dedicated subnet
+
+Vanta runs on its own subnet, not the shared netuid 1. `<netuid>` below is the value
+returned by the create command; it is only known once the subnet exists, so nothing in
+this repository hard-codes it (set `VANTA_NETUID` in `.env` once you have it).
+
+```bash
+btcli subnets create --network test -w vanta -H validator --dry-run   # preview first
+btcli subnets create --network test -w vanta -H validator --json      # returns netuid
+btcli sudo check-start --netuid <netuid> --network test
+btcli sudo start --netuid <netuid> --network test -w vanta            # once allowed
+```
+
+The owner hotkey (`validator`) is registered as UID 0 at creation. Commit-reveal stays
+enabled — do not change `commit_reveal_weights_enabled`.
+
+### 4. Register and publish endpoints
 
 `--announce-ip` must be an address validators can actually reach; **the chain rejects
 loopback** (verified on localnet in Phase 5).
 
 ```bash
-python scripts/testnet_register.py --network test --netuid 1 --miners 4 \
+python scripts/testnet_register.py --network test --netuid <netuid> --miners 4 \
     --wallet-name vanta --announce-ip <your public ip> --dry-run   # preview first
-python scripts/testnet_register.py --network test --netuid 1 --miners 4 \
+python scripts/testnet_register.py --network test --netuid <netuid> --miners 4 \
     --wallet-name vanta --announce-ip <your public ip>
 ```
 
-### 4. Start the neurons
+### 5. Start the neurons
 
 One process per miner (ports 8091–8094 must be reachable at the announced IP):
 
 ```bash
-python scripts/run_miner.py --network test --netuid 1 --wallet-name vanta \
+python scripts/run_miner.py --network test --netuid <netuid> --wallet-name vanta \
     --wallet-hotkey miner0 --engine persistence     --port 8091 --announce-ip <ip>
-python scripts/run_miner.py --network test --netuid 1 --wallet-name vanta \
+python scripts/run_miner.py --network test --netuid <netuid> --wallet-name vanta \
     --wallet-hotkey miner1 --engine mean-reversion  --port 8092 --announce-ip <ip>
-python scripts/run_miner.py --network test --netuid 1 --wallet-name vanta \
+python scripts/run_miner.py --network test --netuid <netuid> --wallet-name vanta \
     --wallet-hotkey miner2 --engine momentum        --port 8093 --announce-ip <ip>
-python scripts/run_miner.py --network test --netuid 1 --wallet-name vanta \
+python scripts/run_miner.py --network test --netuid <netuid> --wallet-name vanta \
     --wallet-hotkey miner3 --engine ml              --port 8094 --announce-ip <ip>
 ```
 
 Then the validator:
 
 ```bash
-python scripts/run_validator.py --network test --netuid 1 \
+python scripts/run_validator.py --network test --netuid <netuid> \
     --wallet-name vanta --wallet-hotkey validator
 ```
 
-### 5. Verify
+### 6. Verify
 
 ```bash
-make network-state NETWORK=test NETUID=1
+make network-state NETWORK=test NETUID=<netuid>
 ```
 
 ---
@@ -145,7 +161,7 @@ These are real constraints observed on chain, not guesses.
   endpoints belonging to other projects. A Vanta validator there will query those
   endpoints, get non-Vanta responses, and reject them at the collector (correct
   behaviour, but noisy and wasteful). For a clean demonstration, register a **dedicated
-  subnet** (1.0 τ lock) with `btcli tx register-subnet` and use its netuid instead.
+  subnet** (1.0 τ lock) with `btcli subnets create` (step 3) and use its netuid instead.
 * **Commit-reveal is enabled**, so `SetWeights` takes the timelocked path: the plaintext
   `Weights` map stays empty until the chain auto-reveals at the drand round. The
   `TimelockedWeightsCommitted` event is the submission evidence, exactly as observed on

@@ -55,15 +55,78 @@ Changing any of these requires an explicit instruction — raise it, do not just
 ## Build order
 
 0. Scaffold ✅
-1. Core domain + scoring mechanism
-2. Market data + resolution
-3. Miner engines
-4. Historical simulation
-5. Bittensor integration
-6. Testnet / submission
+1. Core domain + scoring mechanism ✅
+2. Market data + resolution ✅
+3. Miner engines ✅
+4. Historical simulation ✅
+5. Bittensor integration ✅ (localnet-proven)
+6. Testnet / submission — **in progress as the completion sprint below**
 
 One phase at a time. Present a plan and get explicit approval before writing code for a new phase.
 **Do not start a future phase unless explicitly instructed.**
+
+## Completion sprint (approved) — deadline 2026-10-15 23:59 UTC+1
+
+`PROGRESS.md` is the live task tracker. Work its tasks in order, keep exactly one task
+`IN PROGRESS`, and update it whenever a task's status, a decision, or a known issue changes.
+Scope below is approved; anything not listed is out of scope until explicitly instructed.
+
+**Must-have**
+
+- **Testnet netuid 564 verified live** — the dedicated Vanta subnet: owner/validator UID,
+  activation, validator stake and permit, registration burn — read from chain, not assumed.
+- **≥4 miners** registered on netuid 564, serving signed endpoints validators can reach.
+- **One real 15-minute forecast-to-weight cycle on the public testnet**, with evidence: task,
+  per-miner forecasts, resolution, score breakdown, reputation, UID-aligned weight vector, and the
+  accepted weight extrinsic/commit event. Evidence is recorded output, never paraphrase.
+- **Minimal Vanta Terminal** (§33–§34): ETH/USD reference price, latest consensus
+  `probability_up` and `expected_return`, active miner count, subnet status, and the leaderboard.
+  Network confidence (§31) stays deferred — show miner dispersion only if its definition is
+  already in code; never invent a confidence number.
+- **Vercel deployment** of the Terminal frontend.
+- **Submission docs**: README and `docs/` updated to verified live facts, demo flow, evidence index.
+
+**Nice-to-have** (only after every must-have is done): miner detail (§35), forecast/score history,
+live refresh.
+
+**Cut** (do not build, do not scaffold): trading/execution, multi-asset, new strategy tuning,
+PostgreSQL, Redis, multiple validators, collusion detection system, cross-venue oracle,
+authentication, mobile.
+
+**Runtime stays as is**: Python 3.12, `bittensor` 11.1.0, signed FastAPI (miner) / httpx
+(validator) neuron stack, SQLite storage.
+
+**Demo data**: the historical simulation (`make fetch-history && make simulation`) is the
+reproducible demo-data path, alongside real testnet output. Do not add a seed command or
+fabricated fixture data for presentation.
+
+## Frontend and presentation layer
+
+Direction: **Next.js + TypeScript, read-only presentation layer deployed on Vercel.** It displays
+mechanism output; it never computes scores, weights or consensus, and never writes. **Do not
+scaffold it until its task is explicitly started.**
+
+- **Shared typed presentation schemas.** One set of Pydantic response models in `vanta/api/` is
+  the contract. The frontend mirrors them in a single TypeScript types module, field-for-field;
+  a change to either side updates both in the same change. Presentation schemas are separate
+  from the `ForecastSynapse` wire protocol, which stays locked.
+- **Validate at every boundary.** The API validates what it serves through those models; the
+  frontend validates each response shape at its fetch boundary before rendering. Untrusted or
+  malformed data becomes the error state, never a crash or a silently wrong number.
+- **Consistent errors.** One error shape, defined once in the presentation schemas, used by every
+  endpoint and handled by one frontend code path.
+- **Every data view has loading, empty and error states.** "No resolved tasks yet" is a real
+  state, not a blank screen.
+- **Config via environment.** Backend keeps `VANTA_`-prefixed settings in `vanta/config.py` and
+  `.env.example`; the frontend reads its API base URL from env. No hard-coded hosts or netuids.
+- **No secrets in the client.** Anything shipped to the browser (including every `NEXT_PUBLIC_*`
+  variable) is public. No keys, tokens, wallet material or private hostnames in the frontend.
+- **No new dependencies without explicit approval** — Python or npm, including UI, chart, state
+  or validation libraries. This tightens mechanism rule 7 for the sprint.
+- **Small functions and components**: one responsibility each; format and derive values in plain
+  typed helpers, not inline in markup.
+- **Critical-path tests only** for presentation code: schema contract, boundary validation,
+  error/empty handling. No snapshot or visual tests. Mechanism test standards are unchanged.
 
 ## Mechanism rules
 

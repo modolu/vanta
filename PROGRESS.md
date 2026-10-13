@@ -65,11 +65,11 @@ Build window: 48 hours. Final buffer after the build window is reserved for emer
    - Done when: repo is clean/green; current testnet subnet 564, validator, balance, burn, permit, and chain state are verified; sprint docs exist; product brief is committed.
    - Estimate: 45–60 min.
 
-2. **IN PROGRESS — Complete public testnet topology**
+2. **DONE — Complete public testnet topology**
    - Done when: validator + >=4 miners are registered and visible in the metagraph; miner endpoints are published and reachable by the validator.
    - Estimate: 60–90 min.
 
-3. **TODO — Run public Vanta cycle** — MILESTONE 1
+3. **IN PROGRESS — Run public Vanta cycle** — MILESTONE 1
    - Done when: one real 15m task receives signed forecasts, resolves, scores, updates reputation, and submits weights successfully on public testnet; chain evidence captured.
    - Estimate: 60–90 min active work plus unavoidable horizon/chain waits.
 
@@ -147,7 +147,8 @@ Build window: 48 hours. Final buffer after the build window is reserved for emer
 - **Validator:** UID 0, validator permit **true**, currently inactive because no serving endpoint/round activity yet.
 - **Balance:** free testnet balance verified at **τ3.974888753**.
 - **Miner registration burn:** verified at the minimum **τ0.000500000 per hotkey**. The previous economic blocker is gone; registration is now cheap enough to proceed.
-- **Current topology:** 1 neuron (validator), 0 miner neurons, 0 serving endpoints. `make testnet-preflight NETWORK=test NETUID=564` reports READY.
+- **Current topology:** 5 neurons total: validator UID 0 plus miner0–miner3 at UIDs 1–4. All four miners publish endpoints on `172.20.10.2:8091–8094`, and all four `/health` checks returned HTTP 200 with authentication enabled.
+- **Registration path:** direct SDK registration helper was rejected by the pool; official `btcli subnets register` succeeded for all four miners. The trailing Typer `AttributeError` occurs after successful JSON output and is cosmetic.
 - **btcli cosmetic Typer bug:** some successful commands may print a useful result then throw an `AttributeError`/`Abort`; verify the printed chain result rather than trusting exit code alone.
 - **Commit/reveal:** accepted weight commits may not appear immediately as plaintext weights; distinguish commit acceptance, reveal completion, and visible weights in evidence.
 - **Claude Code headless session:** first kickoff attempt did not complete cleanly in the remote terminal; do not retry blindly. Use direct setup edits for Task 1 and re-test a minimal headless command before delegating implementation work.
@@ -157,4 +158,4 @@ Build window: 48 hours. Final buffer after the build window is reserved for emer
 - Kickoff: **2026-10-13 13:38 UTC+1**.
 - Deadline: **2026-10-15 23:59 UTC+1**.
 - Status: **ON TRACK**.
-- Current critical path: register miner0–miner3, publish reachable endpoints, then complete a real 15-minute cycle before frontend work.
+- Current critical path: complete a real 15-minute public testnet cycle and capture weight-submission evidence before frontend work.
